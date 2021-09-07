@@ -19,19 +19,48 @@ class CameraPreviewScanner extends StatefulWidget {
   State<StatefulWidget> createState() => _CameraPreviewScannerState();
 }
 
-class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
+class _CameraPreviewScannerState extends State<CameraPreviewScanner> with WidgetsBindingObserver {
   dynamic _scanResults;
   CameraController _camera;
   Detector _currentDetector = Detector.text;
   bool _isDetecting = false;
   CameraLensDirection _direction = CameraLensDirection.back;
 
-  final TextRecognizer _recognizer = GoogleVision.instance.textRecognizer();
+  TextRecognizer _recognizer = GoogleVision.instance.textRecognizer();
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_camera == null || !_camera.value.isInitialized) {
+      return;
+    }
+    if(state == AppLifecycleState.paused) {
+      _camera.dispose().then((value) {
+        _recognizer.close();
+      });
+    }
+    if(state == AppLifecycleState.resumed) {
+      _recognizer = GoogleVision.instance.textRecognizer();
+      _initializeCamera();
+    }
+    super.didChangeAppLifecycleState(state);
+  }
+
+  @override
+  void dispose() {
+    _camera.dispose().then((_) {
+      _recognizer.close();
+    });
+
+    _currentDetector = null;
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _initializeCamera() async {
@@ -69,6 +98,10 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
           ),
           () => {_isDetecting = false}));
     });
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Widget _buildResults() {
@@ -88,7 +121,7 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
   Widget _buildImage() {
     return Container(
       constraints: const BoxConstraints.expand(),
-      child: _camera == null
+      child: (_camera == null || !_camera.value.isInitialized)
           ? const Center(
               child: Text(
                 'Initializing Camera...',
@@ -139,15 +172,5 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
             : const Icon(Icons.camera_rear),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _camera.dispose().then((_) {
-      _recognizer.close();
-    });
-
-    _currentDetector = null;
-    super.dispose();
   }
 }
