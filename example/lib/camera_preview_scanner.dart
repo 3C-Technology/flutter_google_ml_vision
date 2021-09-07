@@ -26,11 +26,6 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
   bool _isDetecting = false;
   CameraLensDirection _direction = CameraLensDirection.back;
 
-  final BarcodeDetector _barcodeDetector =
-      GoogleVision.instance.barcodeDetector();
-  final FaceDetector _faceDetector = GoogleVision.instance
-      .faceDetector(FaceDetectorOptions(enableContours: true));
-  final ImageLabeler _imageLabeler = GoogleVision.instance.imageLabeler();
   final TextRecognizer _recognizer = GoogleVision.instance.textRecognizer();
 
   @override
@@ -59,7 +54,7 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
 
       ScannerUtils.detect(
         image: image,
-        detectInImage: _getDetectionMethod(),
+        detectInImage: _recognizer.processImage,
         imageRotation: description.sensorOrientation,
       ).then(
         (dynamic results) {
@@ -70,29 +65,16 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
         },
       ).whenComplete(() => Future.delayed(
           Duration(
-            milliseconds: 100,
+            milliseconds: 1000,
           ),
           () => {_isDetecting = false}));
     });
   }
 
-  Future<dynamic> Function(GoogleVisionImage image) _getDetectionMethod() {
-    switch (_currentDetector) {
-      case Detector.text:
-        return _recognizer.processImage;
-      case Detector.barcode:
-        return _barcodeDetector.detectInImage;
-      case Detector.label:
-        return _imageLabeler.processImage;
-      case Detector.face:
-        return _faceDetector.processImage;
-    }
-
-    return null;
-  }
-
   Widget _buildResults() {
     const Text noResultsText = Text('No results!');
+
+    print("Log: OK");
 
     if (_scanResults == null ||
         _camera == null ||
@@ -100,40 +82,7 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
       return noResultsText;
     }
 
-    CustomPainter painter;
-
-    final Size imageSize = Size(
-      _camera.value.previewSize.height,
-      _camera.value.previewSize.width,
-    );
-
-    switch (_currentDetector) {
-      case Detector.barcode:
-        if (_scanResults is! List<Barcode>) return noResultsText;
-
-        painter = BarcodeDetectorPainter(imageSize, _scanResults);
-        break;
-      case Detector.face:
-        if (_scanResults is! List<Face>) return noResultsText;
-        painter = FaceDetectorPainter(imageSize, _scanResults);
-        break;
-      case Detector.label:
-        if (_scanResults is! List<ImageLabel>) return noResultsText;
-        painter = LabelDetectorPainter(imageSize, _scanResults);
-        break;
-      case Detector.cloudLabel:
-        if (_scanResults is! List<ImageLabel>) return noResultsText;
-        painter = LabelDetectorPainter(imageSize, _scanResults);
-        break;
-      default:
-        assert(_currentDetector == Detector.text);
-        if (_scanResults is! VisionText) return noResultsText;
-        painter = TextDetectorPainter(imageSize, _scanResults);
-    }
-
-    return CustomPaint(
-      painter: painter,
-    );
+    return Text('Have results!');
   }
 
   Widget _buildImage() {
@@ -181,31 +130,6 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ML Vision Example'),
-        actions: <Widget>[
-          PopupMenuButton<Detector>(
-            onSelected: (Detector result) {
-              _currentDetector = result;
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<Detector>>[
-              const PopupMenuItem<Detector>(
-                value: Detector.barcode,
-                child: Text('Detect Barcode'),
-              ),
-              const PopupMenuItem<Detector>(
-                value: Detector.face,
-                child: Text('Detect Face'),
-              ),
-              const PopupMenuItem<Detector>(
-                value: Detector.label,
-                child: Text('Detect Label'),
-              ),
-              const PopupMenuItem<Detector>(
-                value: Detector.text,
-                child: Text('Detect Text'),
-              ),
-            ],
-          ),
-        ],
       ),
       body: _buildImage(),
       floatingActionButton: FloatingActionButton(
@@ -220,9 +144,6 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> {
   @override
   void dispose() {
     _camera.dispose().then((_) {
-      _barcodeDetector.close();
-      _faceDetector.close();
-      _imageLabeler.close();
       _recognizer.close();
     });
 
