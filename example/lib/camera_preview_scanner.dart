@@ -8,6 +8,7 @@ import 'package:camera/camera.dart';
 import 'package:google_ml_vision/google_ml_vision.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_ml_vision_example/DetectorProcessor.dart';
 
 import 'detector_painters.dart';
 import 'scanner_utils.dart';
@@ -20,13 +21,15 @@ class CameraPreviewScanner extends StatefulWidget {
 }
 
 class _CameraPreviewScannerState extends State<CameraPreviewScanner> with WidgetsBindingObserver {
-  dynamic _scanResults;
+  VisionText _scanResults;
   CameraController _camera;
   Detector _currentDetector = Detector.text;
   bool _isDetecting = false;
   CameraLensDirection _direction = CameraLensDirection.back;
 
   TextRecognizer _recognizer = GoogleVision.instance.textRecognizer();
+
+  DetectorProcessor _detectorProcessor = DetectorProcessor();
 
   @override
   void initState() {
@@ -94,7 +97,7 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> with Widget
         },
       ).whenComplete(() => Future.delayed(
           Duration(
-            milliseconds: 1000,
+            milliseconds: 1500,
           ),
           () => {_isDetecting = false}));
     });
@@ -107,15 +110,22 @@ class _CameraPreviewScannerState extends State<CameraPreviewScanner> with Widget
   Widget _buildResults() {
     const Text noResultsText = Text('No results!');
 
-    print("Log: OK");
-
     if (_scanResults == null ||
         _camera == null ||
         !_camera.value.isInitialized) {
       return noResultsText;
     }
 
-    return Text('Have results!');
+    var textBlocks = _scanResults.blocks;
+    _detectorProcessor.updateResult(textBlocks);
+    int sum = _detectorProcessor.sumOfIngredentDetect;
+    String abc = _detectorProcessor.result();
+    String a = "";
+    return Text("$sum: $abc",style: const TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.w400,
+      color: Colors.red,
+    ),);
   }
 
   Widget _buildImage() {
