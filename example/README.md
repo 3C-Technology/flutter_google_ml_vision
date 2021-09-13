@@ -2,7 +2,7 @@
 
 Demonstrates how to use the google_ml_vision plugin.
 
-## Usage
+## Usage`
 
 This example uses the *image_picker* plugin to get images from the device gallery. If using an iOS
 device you will have to configure you project with the correct permissions seen under iOS
